@@ -132,6 +132,26 @@ typedef struct SDL_ShaderCross_HLSL_Info
     SDL_PropertiesID props;                    /**< A properties ID for extensions. Should be 0 if no extensions are needed. */
 } SDL_ShaderCross_HLSL_Info;
 
+typedef struct SDL_ShaderCross_WGSL_Settings {
+    /**
+     * Allow non-uniform derivatives.
+     * This is required for shaders that conditionally access GPU memory.
+     * (e.g, a shader which only samples a texture if X condition is met)
+     *
+     * NOTE: Not entirely sure this explanation is correct? I'm stupid.
+     */
+    bool allowNonUniformDerivatives;
+    /**
+     * Ignore unreachable code warnings.
+     */
+    bool ignoreUnreachableCodeWarnings;
+    /**
+     * Minify the WGSL output.
+     * This will make the final WGSL output practically unreadable.
+     */
+    bool minifyOutput;
+} SDL_ShaderCross_WGSL_Settings;
+
 /**
  * Initializes SDL_shadercross
  *
@@ -183,6 +203,18 @@ extern SDL_DECLSPEC void * SDLCALL SDL_ShaderCross_TranspileMSLFromSPIRV(
  */
 extern SDL_DECLSPEC void * SDLCALL SDL_ShaderCross_TranspileHLSLFromSPIRV(
     const SDL_ShaderCross_SPIRV_Info *info);
+
+/**
+ * Transpile to WGSL code from SPIRV code.
+ *
+ * You must SDL_free the returned string once you are done with it.
+ *
+ * \param info a struct describing the shader to transpile.
+ * \param settings a struct defining WGSL output settings. Can be NULL.
+ * \returns an SDL_malloc'd string containing HLSL code.
+ */
+extern SDL_DECLSPEC void * SDLCALL SDL_ShaderCross_TranspileWGSLFromSPIRV(
+    const SDL_ShaderCross_SPIRV_Info *info, const SDL_ShaderCross_WGSL_Settings *settings);
 
 /**
  * Compile DXBC bytecode from SPIRV code.

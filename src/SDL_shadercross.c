@@ -23,6 +23,9 @@
 #include <SDL3/SDL_loadso.h>
 #include <SDL3/SDL_log.h>
 
+// FIXME: This is gross and horrible and I hate it
+#include "../external/taint.h"
+
 /* Constants */
 #define MAX_DEFINES 64
 #define MAX_DEFINE_STRING_LENGTH 256
@@ -96,7 +99,7 @@ typedef struct DxcBuffer
 
 static Uint8 IID_IDxcBlob[] = {
     0x08, 0xFB, 0xA5, 0x8B,
-    0x95, 0x51,
+0x95, 0x51,
     0xE2, 0x40,
     0xAC,
     0x58,
@@ -1649,6 +1652,63 @@ static SPIRVTranspileContext *SDL_ShaderCross_INTERNAL_TranspileFromSPIRV(
     transpileContext->translated_source = translated_source;
     return transpileContext;
 }
+
+#ifdef SDL_SHADERCROSS_WGSL
+
+// HACK: I've made the default settings allow non-uniform derivatives because I don't want people complaining 
+// about the transpilation not working because they forgot to turn it on 🥀
+#define SDL_SHADERCROSS_WGSL_SETTINGS_DEFAULT (SDL_ShaderCross_WGSL_Settings){true, false, false}
+
+/**
+ * NOTE:
+ * I decided to separate this from SDL_ShaderCross_INTERNAL_TranspileFromSPIRV, 
+ * since that function uses SPIRV-Cross, and this one doesn't.
+ *
+ * We'd effectively have two entirely different functions in one, 
+ * and at that point we might as well split them off.
+ */
+void *SDL_ShaderCross_TranspileWGSLFromSPIRV(const SDL_ShaderCross_SPIRV_Info *info, const SDL_ShaderCross_WGSL_Settings *_settings){
+    TaintOptions *options = NULL;
+    TaintModule *module = NULL;
+
+    SDL_ShaderCross_WGSL_Settings settings = _settings ? *_settings : SDL_SHADERCROSS_WGSL_SETTINGS_DEFAULT;
+
+    const char *wgslOutput = NULL;
+    char *result = NULL;
+
+    options = taint_options_create();
+    if(!options) {
+        SDL_SetError("Failed to allocate memory for Taint options.");
+        
+        return NULL;
+    }
+
+    taint_options_set_bool(options, TAINT_OPT_WGSL_MINIFY, settings.minifyOutput);
+    taint_options_set_bool(options, TAINT_OPT_WGSL_ALLOW_NON_UNIFORM_DERIVATIVES, settings.allowNonUniformDerivatives);
+    taint_options_set_bool(options, TAINT_OPT_WGSL_DISABLE_UNREACHABLE_CODE_WARNING, settings.ignoreUnreachableCodeWarnings);
+
+    // HACK: Somebody gotta kill my ass
+    module = taint_spirv_to_wgsl((uint32_t)(info->bytecode_size / 4), 
+                                 (uint32_t*)info->bytecode, options);
+
+    wgslOutput = taint_module_get_wgsl(module, NULL);
+
+    if(!wgslOutput){
+        // TODO: Check the damn error messages
+        const char *diag = taint_module_get_diagnostics(module, NULL);
+        SDL_SetError("Failed to transpile SPIRV -> WGSL: %s", diag ? diag : "taint_module_get_diagnostics returned NULL!");
+        goto finish;
+    } else {
+        result = SDL_strdup(wgslOutput);
+    }
+
+finish:
+    taint_module_destroy(module);
+    taint_options_destroy(options);
+
+    return result;
+}
+#endif
 
 size_t SDL_ShaderCross_INTERNAL_GetIOVarsStringLength(
     spvc_reflected_resource* reflected_resources,

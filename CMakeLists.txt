@@ -38,6 +38,7 @@ endif()
 
 # Options
 option(SDLSHADERCROSS_DXC "Enable HLSL compilation via DXC" ON)
+option(SDLSHADERCROSS_WGSL "Enable WGSL compilation via Taint" ON)
 option(SDLSHADERCROSS_SHARED "Build shared SDL_shadercross library" ${SDLSHADERCROSS_SHARED_DEFAULT})
 option(SDLSHADERCROSS_STATIC "Build static SDL_shadercross library" ${SDLSHADERCROSS_STATIC_DEFAULT})
 option(SDLSHADERCROSS_SPIRVCROSS_SHARED "Link to shared library variants of dependencies" ON)
@@ -256,6 +257,10 @@ foreach(target IN LISTS SDL3_shadercross_targets)
 	endif()
 	if(SDLSHADERCROSS_DXC)
 		target_link_libraries(${target} PRIVATE DirectXShaderCompiler::dxcompiler)
+	endif()
+	if(SDLSHADERCROSS_WGSL)
+		add_compile_definitions(SDL_SHADERCROSS_WGSL)
+		target_link_libraries(${target} PRIVATE taint)
 	endif()
 	if(NOT SDLSHADERCROSS_SPIRVCROSS_SHARED)
 		# spirv-cross uses C++

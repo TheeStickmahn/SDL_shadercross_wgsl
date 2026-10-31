@@ -34,6 +34,7 @@ typedef enum ShaderCross_DestinationFormat {
     SHADERFORMAT_DXIL,
     SHADERFORMAT_MSL,
     SHADERFORMAT_HLSL,
+    SHADERFORMAT_WGSL,
     SHADERFORMAT_JSON
 } ShaderCross_ShaderFormat;
 
@@ -43,7 +44,7 @@ void print_help(void)
     SDL_Log("Usage: shadercross <input> [options]");
     SDL_Log("Required options:\n");
     SDL_Log("  %-*s %s", column_width, "-s | --source <value>", "Source language format. May be inferred from the filename. Values: [SPIRV, HLSL]");
-    SDL_Log("  %-*s %s", column_width, "-d | --dest <value>", "Destination format. May be inferred from the filename. Values: [DXBC, DXIL, MSL, SPIRV, HLSL, JSON]");
+    SDL_Log("  %-*s %s", column_width, "-d | --dest <value>", "Destination format. May be inferred from the filename. Values: [DXBC, DXIL, MSL, SPIRV, HLSL, WGSL, JSON]");
     SDL_Log("  %-*s %s", column_width, "-t | --stage <value>", "Shader stage. May be inferred from the filename. Values: [vertex, fragment, compute]");
     SDL_Log("  %-*s %s", column_width, "-e | --entrypoint <value>", "Entrypoint function name. Default: \"main\".");
     SDL_Log("  %-*s %s", column_width, "-o | --output <value>", "Output file.");
@@ -299,7 +300,11 @@ int main(int argc, char *argv[])
                 } else if (SDL_strcasecmp(argv[i], "HLSL") == 0) {
                     destinationFormat = SHADERFORMAT_HLSL;
                     destinationValid = true;
-                } else if (SDL_strcasecmp(argv[i], "JSON") == 0) {
+                } else if (SDL_strcasecmp(argv[i], "WGSL") == 0) {
+                    destinationFormat = SHADERFORMAT_WGSL;
+                    destinationValid = true;
+                }
+                else if (SDL_strcasecmp(argv[i], "JSON") == 0) {
                     destinationFormat = SHADERFORMAT_JSON;
                     destinationValid = true;
                 } else {
@@ -562,6 +567,19 @@ int main(int argc, char *argv[])
                 break;
             }
 
+            case SHADERFORMAT_WGSL: {
+                char *buffer = SDL_ShaderCross_TranspileWGSLFromSPIRV(
+                    &spirvInfo, NULL); // we'll just use the default settings
+                if (buffer == NULL) {
+                    SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to transpile WGSL from SPIRV: %s", SDL_GetError());
+                    result = 1;
+                } else {
+                    SDL_IOprintf(outputIO, "%s", buffer);
+                    SDL_free(buffer);
+                }
+                break;
+            }
+
             case SHADERFORMAT_SPIRV: {
                 SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Input and output are both SPIRV. Did you mean to do that?");
                 result = 1;
@@ -794,6 +812,13 @@ int main(int argc, char *argv[])
                     }
                 }
 
+                break;
+            }
+
+            case SHADERFORMAT_WGSL: {
+                // TODO: Do we want HLSL -> WGSL support?
+                SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Shadercross does not support HLSL to WGSL compilation.");
+                result = 1;
                 break;
             }
 

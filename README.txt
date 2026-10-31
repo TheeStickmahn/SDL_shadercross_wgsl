@@ -13,4 +13,7 @@ DXIL dependencies can be obtained here: https://github.com/microsoft/DirectXShad
 It is strongly recommended that you ship SPIRV-Cross and DXIL dependencies along with your application.
 For compiling to DXBC, d3dcompiler_47 is shipped with Windows. Other platforms require vkd3d-utils.
 
+For WGSL translation, this library depends on Taint: https://github.com/taisei-project/taint
+You will have to install Taint, since I am ideologically opposed to dynamic linking (i'm too stupid to figure it out and it scares me)
+
 This library is under the zlib license, see LICENSE.txt for details.
